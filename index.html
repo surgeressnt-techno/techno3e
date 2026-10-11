@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salle de contrôle des données — Le poids de nos vies numériques</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1420;
+    --bg-grid:#131c2c;
+    --panel:#151f30;
+    --panel-2:#1b2740;
+    --edge:#26344f;
+    --edge-soft:#1f2c44;
+    --ink:#eaf1fb;
+    --ink-dim:#93a4c2;
+    --ink-faint:#5f7093;
+    --flux:#38e1c8;      /* données / OK */
+    --flux-dim:#1c8f80;
+    --warn:#f7b23b;      /* attention */
+    --crit:#ff5a6e;      /* saturation */
+    --ok:#43d783;
+    --accent:#7aa2ff;
+    --shadow:rgba(0,0,0,.45);
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(56,225,200,.06), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(122,162,255,.07), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    min-height:100vh;
+    padding:clamp(14px,3vw,34px);
+  }
+  .mono{font-family:"JetBrains Mono",ui-monospace,"SF Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+
+  /* ---------- shell ---------- */
+  .wrap{max-width:1080px;margin:0 auto}
+  header.top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--edge);
+    padding-bottom:18px;margin-bottom:22px;
+  }
+  .brand-eyebrow{
+    font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--flux);margin-bottom:10px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--flux);
+    box-shadow:0 0 0 0 rgba(56,225,200,.6);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(56,225,200,.5)}70%{box-shadow:0 0 0 9px rgba(56,225,200,0)}100%{box-shadow:0 0 0 0 rgba(56,225,200,0)}}
+  h1{font-size:clamp(23px,3.4vw,34px);font-weight:700;letter-spacing:-.01em;line-height:1.1}
+  h1 span{color:var(--ink-dim);font-weight:500}
+  .sub{color:var(--ink-dim);font-size:14px;margin-top:6px;max-width:52ch}
+  .badge{
+    font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.05em;
+    color:var(--ink-dim);border:1px solid var(--edge);border-radius:999px;
+    padding:7px 13px;white-space:nowrap;background:var(--panel);
+  }
+
+  /* ---------- hypotheses strip ---------- */
+  .hyp{
+    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;align-items:center;
+  }
+  .hyp-label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-dim);margin-right:4px}
+  .chip{
+    font-family:"JetBrains Mono",monospace;font-size:12px;
+    background:var(--panel);border:1px solid var(--edge-soft);border-radius:8px;
+    padding:6px 11px;color:var(--ink);
+  }
+  .chip b{color:var(--flux);font-weight:700}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;gap:6px;background:var(--panel);border:1px solid var(--edge);
+    border-radius:14px;padding:6px;margin-bottom:20px}
+  .tab{
+    flex:1;border:1px solid var(--edge-soft);background:var(--bg-grid);color:var(--ink-dim);cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;padding:12px 14px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;gap:10px;transition:.18s;
+    text-align:center;line-height:1.2;
+  }
+  .tab .n{font-family:"JetBrains Mono",monospace;font-size:12px;
+    background:var(--panel-2);border-radius:6px;padding:3px 7px;color:var(--flux)}
+  .tab:hover{color:var(--ink);border-color:var(--flux-dim);background:var(--panel-2)}
+  .tab[aria-selected="true"]{background:var(--panel-2);color:var(--ink);
+    border-color:var(--flux);box-shadow:0 0 0 1px var(--flux),0 10px 22px -14px rgba(56,225,200,.5)}
+  .tab[aria-selected="true"] .n{background:var(--flux);color:#04231e}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .panelview[hidden]{display:none}
+
+  /* ---------- layout grids ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--bg-grid));
+    border:1px solid var(--edge);border-radius:16px;padding:20px;
+    box-shadow:0 12px 30px -18px var(--shadow);
+  }
+  .card h2{font-size:12px;font-family:"JetBrains Mono",monospace;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:18px;
+    display:flex;align-items:center;gap:9px}
+  .card h2::before{content:"";width:14px;height:2px;background:var(--flux);border-radius:2px}
+
+  /* ---------- controls ---------- */
+  .ctrl{margin-bottom:20px}
+  .ctrl:last-child{margin-bottom:0}
+  .ctrl-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .ctrl-head label{font-size:14px;font-weight:600}
+  .ctrl-val{font-family:"JetBrains Mono",monospace;font-size:15px;color:var(--flux);font-weight:700}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;
+    background:linear-gradient(90deg,var(--flux-dim),var(--flux)) no-repeat;
+    background-size:var(--fill,50%) 100%;
+    cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:var(--edge)}
+  input[type=range]{background-color:var(--edge)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+    background:var(--ink);border:3px solid var(--flux);margin-top:-7px;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .12s}
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.12)}
+  input[type=range]::-moz-range-track{height:6px;border-radius:6px;background:var(--edge)}
+  input[type=range]::-moz-range-progress{height:6px;border-radius:6px;background:var(--flux)}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;
+    background:var(--ink);border:3px solid var(--flux);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+  .seg{display:flex;gap:6px;margin-top:4px}
+  .seg button{
+    flex:1;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    background:var(--panel-2);color:var(--ink-dim);border:1px solid var(--edge);
+    border-radius:9px;padding:10px 6px;transition:.15s;line-height:1.15}
+  .seg button small{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;
+    font-weight:400;margin-top:3px;opacity:.7}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flux);color:#04231e;border-color:var(--flux)}
+  .seg button[aria-pressed="true"] small{opacity:.85}
+  .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- readouts ---------- */
+  .readouts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ro{background:var(--bg-grid);border:1px solid var(--edge-soft);border-radius:12px;padding:14px 15px}
+  .ro .k{font-size:11px;color:var(--ink-dim);font-family:"JetBrains Mono",monospace;
+    letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+  .ro .v{font-family:"JetBrains Mono",monospace;font-size:24px;font-weight:700;line-height:1;letter-spacing:-.01em}
+  .ro .v small{font-size:13px;color:var(--ink-dim);font-weight:500;margin-left:3px}
+  .ro.wide{grid-column:1/-1}
+
+  /* storage bar */
+  .bar-wrap{margin-top:10px}
+  .bar-track{height:26px;background:var(--bg);border:1px solid var(--edge);border-radius:8px;
+    overflow:hidden;position:relative}
+  .bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--flux-dim),var(--flux));
+    transition:width .35s cubic-bezier(.2,.7,.3,1),background .3s}
+  .bar-fill.warn{background:linear-gradient(90deg,#c98a1e,var(--warn))}
+  .bar-fill.crit{background:linear-gradient(90deg,#c93247,var(--crit))}
+  .bar-cap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);
+    text-shadow:0 1px 3px rgba(0,0,0,.6)}
+
+  /* ---------- concert viz ---------- */
+  .gauge{margin-bottom:6px}
+  .gauge-track{height:34px;border-radius:9px;background:var(--bg);border:1px solid var(--edge);
+    position:relative;overflow:hidden}
+  .gauge-100{position:absolute;top:0;bottom:0;left:100%;width:2px;background:var(--ink-dim);opacity:.5;z-index:3}
+  .gauge-fill{height:100%;width:0;transition:width .4s cubic-bezier(.2,.7,.3,1),background .3s;
+    background:linear-gradient(90deg,var(--flux-dim),var(--flux))}
+  .gauge-fill.warn{background:linear-gradient(90deg,#c98a1e,var(--warn))}
+  .gauge-fill.crit{background:linear-gradient(90deg,#c93247,var(--crit))}
+  .gauge-lbl{position:absolute;inset:0;display:flex;align-items:center;gap:8px;
+    padding-left:12px;font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;
+    color:var(--ink);text-shadow:0 1px 3px rgba(0,0,0,.7);z-index:2}
+  .status{display:inline-flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;
+    font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:5px 11px;border-radius:999px;margin-top:12px}
+  .status .d{width:8px;height:8px;border-radius:50%}
+  .status.ok{color:var(--ok);background:rgba(67,215,131,.1)}
+  .status.ok .d{background:var(--ok)}
+  .status.warn{color:var(--warn);background:rgba(247,178,59,.12)}
+  .status.warn .d{background:var(--warn)}
+  .status.crit{color:var(--crit);background:rgba(255,90,110,.12)}
+  .status.crit .d{background:var(--crit);animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.3}}
+
+  /* server racks */
+  .racks{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+  .rack{width:26px;height:34px;border-radius:5px;background:var(--bg);
+    border:1px solid var(--edge);position:relative;overflow:hidden;transition:.25s}
+  .rack::before,.rack::after{content:"";position:absolute;left:4px;right:4px;height:3px;border-radius:2px;
+    background:var(--edge);transition:.25s}
+  .rack::before{top:6px}.rack::after{top:13px}
+  .rack .u3{position:absolute;left:4px;right:4px;top:20px;height:3px;border-radius:2px;background:var(--edge);transition:.25s}
+  .rack.on{border-color:var(--flux);box-shadow:0 0 12px -2px rgba(56,225,200,.5)}
+  .rack.on::before,.rack.on::after,.rack.on .u3{background:var(--flux)}
+  .rack.on.hot{border-color:var(--crit);box-shadow:0 0 12px -2px rgba(255,90,110,.5)}
+  .rack.on.hot::before,.rack.on.hot::after,.rack.on.hot .u3{background:var(--crit)}
+
+  /* advisory */
+  .advice{margin-top:16px;border-radius:12px;padding:14px 16px;font-size:14px;
+    border:1px solid var(--edge);background:var(--panel-2);display:flex;gap:12px;align-items:flex-start}
+  .advice .ic{flex:none;width:22px;height:22px;margin-top:1px}
+  .advice.ok{border-color:rgba(67,215,131,.4)}
+  .advice.warn{border-color:rgba(247,178,59,.4)}
+  .advice.crit{border-color:rgba(255,90,110,.45)}
+  .advice b{color:var(--ink)}
+  .advice span{color:var(--ink-dim)}
+
+  .note{margin-top:26px;padding-top:16px;border-top:1px dashed var(--edge);
+    font-size:12.5px;color:var(--ink-dim);display:flex;gap:10px;align-items:flex-start}
+  .note svg{flex:none;margin-top:1px}
+  .compare{font-family:"JetBrains Mono",monospace;color:var(--flux);font-weight:700}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+  }
+
+  /* ---------- resource tab (view-c) ---------- */
+  .res-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:760px){.res-grid{grid-template-columns:repeat(2,1fr)}}
+  .res-tag{background:var(--bg-grid);border:1px solid var(--edge-soft);border-radius:12px;
+    padding:12px 10px;text-align:center}
+  .res-tag .ic{font-size:20px;line-height:1;margin-bottom:6px;display:block}
+  .res-tag .lbl{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:3px}
+  .res-tag .ex{font-size:11px;color:var(--ink-dim);line-height:1.35}
+
+  .metier-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.metier-cols{grid-template-columns:1fr}}
+  .metier-col{background:var(--bg-grid);border:1px solid var(--edge-soft);border-radius:12px;padding:14px 15px}
+  .metier-col .mc-head{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+  .metier-col .mc-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .metier-col.new .mc-dot{background:var(--ok)}
+  .metier-col.evol .mc-dot{background:var(--accent)}
+  .metier-col.decl .mc-dot{background:var(--warn)}
+  .metier-col .mc-title{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-dim)}
+  .metier-col ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .metier-col li{font-size:13px;color:var(--ink);line-height:1.4;padding-left:14px;position:relative}
+  .metier-col li::before{content:"—";position:absolute;left:0;color:var(--ink-faint)}
+  .metier-col li small{display:block;color:var(--ink-dim);font-size:11.5px;margin-top:1px}
+
+  .ia-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.ia-grid{grid-template-columns:1fr}}
+  .ia-block h3{font-size:12.5px;font-weight:700;color:var(--flux);margin-bottom:9px;
+    display:flex;align-items:center;gap:7px}
+  .ia-block ul{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:4px}
+  .ia-block li{font-size:13px;color:var(--ink-dim);line-height:1.4;padding-left:14px;position:relative}
+  .ia-block li::before{content:"›";position:absolute;left:0;color:var(--flux);font-weight:700}
+  .ia-block li b{color:var(--ink);font-weight:600}
+
+  .connect-list{display:flex;flex-direction:column;gap:10px}
+  .connect-row{display:flex;gap:12px;align-items:flex-start;background:var(--bg-grid);
+    border:1px solid var(--edge-soft);border-radius:10px;padding:10px 13px}
+  .connect-row .fn{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-dim);flex:0 0 118px;padding-top:2px}
+  .connect-row .ex{font-size:13.5px;color:var(--ink)}
+  .connect-row .ex i{color:var(--flux);font-style:normal;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="brand-eyebrow"><span class="live-dot"></span>Salle de contrôle · Réseau &amp; données</div>
+      <h1>Le poids caché <span>de nos vies numériques</span></h1>
+      <p class="sub">Justine envoie sa vidéo de concert. Règler les paramètres et observer ce que toutes ces données demandent vraiment au stockage, au réseau et aux centres de données.</p>
+    </div>
+    <div class="badge">T2 - Usages et impacts sociétaux du numérique</div>
+  </header>
+
+  <div class="hyp" aria-label="Hypothèses du modèle">
+    <span class="hyp-label">Hypothèses</span>
+    <span class="chip">1 photo ≈ <b>4 Mo</b></span>
+    <span class="chip">vidéo HD ≈ <b>250 Mo/min</b></span>
+    <span class="chip">message vocal ≈ <b>2 Mo</b></span>
+    <span class="chip">débit d'envoi ≈ <b>5 Mo/s</b></span>
+    <span class="chip">1 Go = <b>1000 Mo</b></span>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Choisir le simulateur">
+    <button class="tab" role="tab" id="tab-a" aria-selected="true" aria-controls="view-a">
+      <span class="n">Exercice 3</span> L'envoi de Justine
+    </button>
+    <button class="tab" role="tab" id="tab-b" aria-selected="false" aria-controls="view-b">
+      <span class="n">Exercice 4</span> Le concert
+    </button>
+    <button class="tab" role="tab" id="tab-c" aria-selected="false" aria-controls="view-c">
+      <span class="n">Ressources</span> Un choix stratégique
+    </button>
+  </div>
+
+  <!-- =================== VIEW A : N3 =================== -->
+  <section class="panelview" id="view-a" role="tabpanel" aria-labelledby="tab-a">
+    <div class="grid">
+      <div class="card">
+        <h2>Ce que Justine envoie</h2>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="a-photos">Nombre de photos</label>
+            <span class="ctrl-val mono" id="a-photos-v">15</span></div>
+          <input type="range" id="a-photos" min="0" max="50" value="0" step="1">
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="a-duree">Durée de la vidéo</label>
+            <span class="ctrl-val mono" id="a-duree-v">2 min</span></div>
+          <input type="range" id="a-duree" min="0" max="10" value="0" step="0.5">
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label>Qualité de la vidéo</label>
+            <span class="ctrl-val mono" id="a-qual-v">HD</span></div>
+          <div class="seg" id="a-qual" role="group" aria-label="Qualité de la vidéo">
+            <button data-q="50"  aria-pressed="false">SD<small>50 Mo/min</small></button>
+            <button data-q="250" aria-pressed="true">HD<small>250 Mo/min</small></button>
+            <button data-q="1000" aria-pressed="false">4K<small>1000 Mo/min</small></button>
+          </div>
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="a-vocal">Message vocal</label>
+            <span class="ctrl-val mono" id="a-vocal-v">Oui</span></div>
+          <div class="seg" id="a-vocal" role="group" aria-label="Message vocal">
+            <button data-v="1" aria-pressed="true">Avec</button>
+            <button data-v="0" aria-pressed="false">Sans</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Bilan de l'envoi</h2>
+        <div class="readouts">
+          <div class="ro">
+            <div class="k">Taille totale</div>
+            <div class="v mono" id="a-total">—</div>
+          </div>
+          <div class="ro">
+            <div class="k">Temps d'envoi</div>
+            <div class="v mono" id="a-time">—</div>
+          </div>
+          <div class="ro wide">
+            <div class="k">Détail par type de fichier</div>
+            <div class="v mono" style="font-size:14px;font-weight:500;line-height:1.7" id="a-detail">—</div>
+          </div>
+          <div class="ro wide">
+            <div class="k">Remplissage du téléphone de Justine · 4 Go libres</div>
+            <div class="bar-wrap">
+              <div class="bar-track"><div class="bar-fill" id="a-bar"></div>
+                <div class="bar-cap mono" id="a-bar-cap">—</div></div>
+            </div>
+            <div class="v mono" style="font-size:14px;font-weight:500;margin-top:10px" id="a-storage">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93a4c2" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      <div>Modèle simplifié à but pédagogique : ce sont des <b>ordres de grandeur</b>, pas des valeurs exactes. Une vidéo réelle dépend aussi de la compression et du format.</div>
+    </div>
+  </section>
+
+  <!-- =================== VIEW B : N4 =================== -->
+  <section class="panelview" id="view-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+    <div class="grid">
+      <div class="card">
+        <h2>Le soir du concert</h2>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="b-people">Spectateurs qui envoient <b>en même temps</b></label>
+            <span class="ctrl-val mono" id="b-people-v">60</span></div>
+          <input type="range" id="b-people" min="1" max="500" value="60" step="1">
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="b-size">Taille de chaque vidéo</label>
+            <span class="ctrl-val mono" id="b-size-v">500 Mo</span></div>
+          <input type="range" id="b-size" min="100" max="2000" value="500" step="50">
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label>Infrastructure du réseau</label>
+            <span class="ctrl-val mono" id="b-infra-v">Antenne concert</span></div>
+          <div class="seg" id="b-infra" role="group" aria-label="Infrastructure réseau">
+            <button data-c="150"  aria-pressed="false">4G standard<small>150 Mo/s</small></button>
+            <button data-c="600"  aria-pressed="true">Antenne concert<small>600 Mo/s</small></button>
+            <button data-c="2000" aria-pressed="false">5G + fibre<small>2000 Mo/s</small></button>
+          </div>
+        </div>
+        <div class="advice" id="b-advice">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#93a4c2" stroke-width="2"><path d="M12 2v6M12 22v-2M4 12H2M6.3 6.3 4.9 4.9M12 8a4 4 0 0 0-2 7.5V18h4v-2.5A4 4 0 0 0 12 8Z"/></svg>
+          <div id="b-advice-txt"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>État du réseau</h2>
+
+        <div class="ctrl-head"><label>Charge du réseau</label>
+          <span class="ctrl-val mono" id="b-sat-v">—</span></div>
+        <div class="gauge">
+          <div class="gauge-track">
+            <div class="gauge-fill" id="b-gauge"></div>
+            <div class="gauge-100" id="b-100" style="left:100%"></div>
+            <div class="gauge-lbl mono"><span id="b-demand">—</span></div>
+          </div>
+        </div>
+        <div class="status ok" id="b-status"><span class="d"></span><span id="b-status-txt">—</span></div>
+
+        <div class="readouts" style="margin-top:18px">
+          <div class="ro">
+            <div class="k">Temps d'envoi réel</div>
+            <div class="v mono" id="b-time">—</div>
+          </div>
+          <div class="ro">
+            <div class="k">Énergie mobilisée</div>
+            <div class="v mono" id="b-energy">—</div>
+          </div>
+          <div class="ro wide">
+            <div class="k">Centres de données mobilisés <span id="b-dc-count" class="mono" style="color:var(--flux)"></span></div>
+            <div class="racks" id="b-racks" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93a4c2" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      <div>Modèle simplifié à but pédagogique : chaque téléphone envoie jusqu'à 5 Mo/s, l'antenne a une capacité limitée. Au-delà, le réseau <b>sature</b> et tout le monde ralentit. Le nombre de centres de données et l'énergie sont des ordres de grandeur illustratifs, pas des mesures réelles.</div>
+    </div>
+  </section>
+
+  <!-- =================== VIEW C : RESSOURCES OST15 =================== -->
+  <section class="panelview" id="view-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+
+    <div class="card" style="margin-bottom:18px">
+      <h2>Les services rendus par le numérique</h2>
+      <div class="res-grid">
+        <div class="res-tag"><span class="ic">🗣️</span><div class="lbl">Communiquer</div><div class="ex">Visioconférence, messageries, réseaux sociaux</div></div>
+        <div class="res-tag"><span class="ic">🏥</span><div class="lbl">Se soigner</div><div class="ex">Téléconsultation, dossier médical partagé</div></div>
+        <div class="res-tag"><span class="ic">🎓</span><div class="lbl">Apprendre</div><div class="ex">ENT, cours et tutoriels en ligne</div></div>
+        <div class="res-tag"><span class="ic">🛒</span><div class="lbl">Consommer</div><div class="ex">Achats en ligne, paiement sans contact</div></div>
+        <div class="res-tag"><span class="ic">🏛️</span><div class="lbl">Faire ses démarches</div><div class="ex">Impôts, CAF, carte grise en ligne</div></div>
+        <div class="res-tag"><span class="ic">🧭</span><div class="lbl">Se déplacer</div><div class="ex">GPS, covoiturage, billets dématérialisés</div></div>
+        <div class="res-tag"><span class="ic">🎮</span><div class="lbl">Se divertir</div><div class="ex">Streaming, jeux en ligne</div></div>
+        <div class="res-tag"><span class="ic">🏭</span><div class="lbl">Produire</div><div class="ex">Robots connectés, pilotage à distance</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h2>Des métiers en pleine mutation</h2>
+      <div class="metier-cols">
+        <div class="metier-col new">
+          <div class="mc-head"><span class="mc-dot"></span><span class="mc-title">Métiers créés</span></div>
+          <ul>
+            <li>Développeur·euse d'applications<small>conçoit et programme des logiciels ou applications</small></li>
+            <li>Data analyst / data scientist<small>collecte et analyse de grandes quantités de données</small></li>
+            <li>Expert·e en cybersécurité<small>protège les systèmes contre le piratage</small></li>
+            <li>Technicien·ne de centre de données<small>maintenance, refroidissement</small></li>
+            <li>Community manager<small>anime les réseaux sociaux d'une entreprise</small></li>
+          </ul>
+        </div>
+        <div class="metier-col evol">
+          <div class="mc-head"><span class="mc-dot"></span><span class="mc-title">Métiers transformés</span></div>
+          <ul>
+            <li>Commerçant·e<small>vente en ligne, click and collect</small></li>
+            <li>Médecin<small>téléconsultation, dossier numérique</small></li>
+            <li>Enseignant·e<small>ressources et classes numériques</small></li>
+            <li>Agriculteur·rice<small>capteurs, agriculture de précision</small></li>
+            <li>Journaliste<small>contenus multimédias, réseaux sociaux</small></li>
+          </ul>
+        </div>
+        <div class="metier-col decl">
+          <div class="mc-head"><span class="mc-dot"></span><span class="mc-title">Métiers automatisés</span></div>
+          <ul>
+            <li>Caissier·ère<small>caisses automatiques</small></li>
+            <li>Standardiste<small>répondeurs, chatbots</small></li>
+            <li>Saisie administrative<small>logiciels automatisés</small></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h2>Zoom : l'intelligence artificielle dans les métiers</h2>
+      <div class="ia-grid">
+        <div class="ia-block">
+          <h3>🤖 L'IA comme assistant</h3>
+          <ul>
+            <li>Aide à la <b>rédaction</b> et à la <b>traduction</b></li>
+            <li>Appui au <b>diagnostic médical</b></li>
+            <li>Génération de <b>code</b> ou de visuels</li>
+            <li>Analyse rapide de grandes quantités de données</li>
+          </ul>
+        </div>
+        <div class="ia-block">
+          <h3>⚙️ Nouveaux métiers, nouveaux enjeux</h3>
+          <ul>
+            <li><b>Ingénieur·e</b> en apprentissage automatique</li>
+            <li><b>Éthicien·ne</b> de l'IA</li>
+            <li>Besoin de <b>nouvelles compétences</b> pour tous les métiers</li>
+            <li>Entraînement des IA très <b>énergivore</b> (data centers)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Exprimer le rôle stratégique du numérique dans la société et les métiers</h2>
+      <div class="connect-list">
+        <div class="connect-row"><span class="fn">Service rendu</span><span class="ex">« Le numérique permet de <i>communiquer, se soigner, apprendre…</i> »</span></div>
+        <div class="connect-row"><span class="fn">Choix stratégique</span><span class="ex">« Ce qui pousse la société / les entreprises à investir dans <i>les data centers, les réseaux…</i> »</span></div>
+        <div class="connect-row"><span class="fn">Métier impacté</span><span class="ex">« De nombreux métiers évoluent ou apparaissent, comme <i>…</i> »</span></div>
+        <div class="connect-row"><span class="fn">Incidence à surveiller</span><span class="ex">« Mais cet essor a un coût : <i>consommation d'énergie, saturation des réseaux…</i> »</span></div>
+        <div class="connect-row"><span class="fn">Conclusion</span><span class="ex">« Il est donc nécessaire de <i>surveiller et maîtriser</i> ces impacts. »</span></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93a4c2" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      <div>Cette page rassemble des <b>éléments pour exprimer le rôle stratégique du numérique dans la société et les métiers</b> : elle ne donne pas la réponse toute faite. À toi de choisir tes exemples et de les relier avec tes propres mots.</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var fr=function(n,d){return Number(n).toLocaleString('fr-FR',{maximumFractionDigits:(d==null?0:d)})};
+
+  // format a size given in Mo -> "xxx Mo" or "x,x Go"
+  function fmtSize(mo){
+    if(mo>=1000){return {v:fr(mo/1000,mo/1000<10?1:0), u:'Go'};}
+    return {v:fr(mo,mo<10?1:0), u:'Mo'};
+  }
+  function fmtTime(sec){
+    sec=Math.round(sec);
+    if(sec<60) return fr(sec)+' s';
+    var m=Math.floor(sec/60), s=sec%60;
+    if(m<60) return m+' min '+(s<10?'0':'')+s+' s';
+    var h=Math.floor(m/60); m=m%60;
+    return h+' h '+(m<10?'0':'')+m+' min';
+  }
+  function setFill(el){
+    var min=+el.min||0, max=+el.max||100, val=+el.value;
+    var p=((val-min)/(max-min))*100;
+    el.style.setProperty('--fill', p+'%');
+  }
+
+  /* ---------------- TABS ---------------- */
+  var tabs=[$('#tab-a'),$('#tab-b'),$('#tab-c')];
+  var views=[$('#view-a'),$('#view-b'),$('#view-c')];
+  function select(tab){
+    var idx=tabs.indexOf(tab);
+    tabs.forEach(function(t,i){
+      t.setAttribute('aria-selected', i===idx);
+      views[i].hidden = i!==idx;
+    });
+  }
+  tabs.forEach(function(t){ t.addEventListener('click',function(){select(t)}); });
+  tabs.forEach(function(t,i){
+    t.addEventListener('keydown',function(e){
+      if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+        e.preventDefault();
+        var dir=(e.key==='ArrowRight')?1:-1;
+        var next=tabs[(i+dir+tabs.length)%tabs.length];
+        select(next); next.focus();
+      }
+    });
+  });
+
+  /* ============ MODULE A (N3) ============ */
+  var aPhotos=$('#a-photos'), aDuree=$('#a-duree'), aQual=$('#a-qual'), aVocal=$('#a-vocal');
+  var qual=250, vocal=1;
+  var PHOTO=4, VOCAL=2, DEBIT=5, STORAGE=4000; // Mo, Mo/s, Mo
+
+  function computeA(){
+    var nPhotos=+aPhotos.value;
+    var duree=+aDuree.value;
+    var photosMo=nPhotos*PHOTO;
+    var videoMo=duree*qual;
+    var vocalMo=vocal?VOCAL:0;
+    var total=photosMo+videoMo+vocalMo;
+
+    // labels
+    $('#a-photos-v').textContent=nPhotos;
+    $('#a-duree-v').textContent=(duree%1===0?duree:duree.toFixed(1).replace('.',','))+' min';
+    $('#a-qual-v').textContent=(qual===50?'SD':qual===250?'HD':'4K');
+    $('#a-vocal-v').textContent=vocal?'Oui':'Non';
+
+    var ts=fmtSize(total);
+    $('#a-total').innerHTML=ts.v+' <small>'+ts.u+'</small>';
+    $('#a-time').textContent=fmtTime(total/DEBIT);
+
+    var ps=fmtSize(photosMo), vs=fmtSize(videoMo);
+    $('#a-detail').innerHTML=
+      '📷 '+nPhotos+' photos&nbsp;=&nbsp;'+ps.v+' '+ps.u+'<br>'+
+      '🎬 vidéo '+(duree%1===0?duree:String(duree).replace('.',','))+' min&nbsp;=&nbsp;'+vs.v+' '+vs.u+
+      (vocal?'<br>🎙️ vocal&nbsp;=&nbsp;'+VOCAL+' Mo':'');
+
+    // storage bar
+    var pct=total/STORAGE*100;
+    var bar=$('#a-bar');
+    bar.style.width=Math.min(100,pct)+'%';
+    bar.classList.toggle('warn',pct>=60&&pct<100);
+    bar.classList.toggle('crit',pct>=100);
+    $('#a-bar-cap').textContent=fr(Math.min(pct,999),0)+' %';
+    var reste=STORAGE-total;
+    var nbEnvois= total>0 ? Math.floor(STORAGE/total) : '∞';
+    $('#a-storage').innerHTML= pct>=100
+      ? '⚠️ Cet envoi ne tient pas : il faudrait '+fmtSize(total).v+' '+fmtSize(total).u+' mais il ne reste que 4 Go.'
+      : 'Reste '+fmtSize(reste).v+' '+fmtSize(reste).u+' libres · Justine peut stocker <b style="color:var(--flux)">'+nbEnvois+'</b> envois comme celui-ci.';
+
+    setFill(aPhotos); setFill(aDuree);
+  }
+
+  aPhotos.addEventListener('input',computeA);
+  aDuree.addEventListener('input',computeA);
+  aQual.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    qual=+b.dataset.q;
+    [].forEach.call(aQual.children,function(x){x.setAttribute('aria-pressed', x===b)});
+    computeA();
+  });
+  aVocal.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    vocal=+b.dataset.v;
+    [].forEach.call(aVocal.children,function(x){x.setAttribute('aria-pressed', x===b)});
+    computeA();
+  });
+
+  /* ============ MODULE B (N4) ============ */
+  var bPeople=$('#b-people'), bSize=$('#b-size'), bInfra=$('#b-infra');
+  var capacity=600; // Mo/s
+  var PHONE=5; // Mo/s per phone
+  var DC_PER_TO=0.05;    // 1 centre (modèle illustratif) ≈ 50 Go de données de l'évènement
+  var KWH_PER_GO=0.02;   // énergie illustrative
+  var HOME_KWH_DAY=10;   // conso d'un foyer par jour (repère)
+  var RACK_MAX=16;
+
+  // build racks
+  var racksEl=$('#b-racks');
+  for(var i=0;i<RACK_MAX;i++){
+    var r=document.createElement('div'); r.className='rack';
+    r.innerHTML='<div class="u3"></div>'; racksEl.appendChild(r);
+  }
+  var racks=[].slice.call(racksEl.children);
+
+  function computeB(){
+    var people=+bPeople.value;
+    var size=+bSize.value;      // Mo per video
+    var demand=people*PHONE;    // Mo/s demandés
+    var sat=demand/capacity*100;
+    var threshold=Math.floor(capacity/PHONE); // nb de personnes avant saturation
+
+    // labels
+    $('#b-people-v').textContent=fr(people);
+    $('#b-size-v').textContent=fmtSize(size).v+' '+fmtSize(size).u;
+    $('#b-infra-v').textContent=(capacity===150?'4G standard':capacity===600?'Antenne concert':'5G + fibre');
+
+    // gauge (cap display at 100% width, but show real %)
+    var g=$('#b-gauge');
+    g.style.width=Math.min(100,sat)+'%';
+    var level = sat<70?'ok':(sat<100?'warn':'crit');
+    g.classList.toggle('warn',level==='warn');
+    g.classList.toggle('crit',level==='crit');
+    $('#b-sat-v').textContent=fr(sat,0)+' %';
+    $('#b-demand').textContent=fr(demand)+' Mo/s demandés / '+fr(capacity)+' Mo/s';
+
+    var st=$('#b-status'), stx=$('#b-status-txt');
+    st.className='status '+level;
+    stx.textContent = level==='ok' ? 'Réseau fluide' : level==='warn' ? 'Réseau chargé' : 'Réseau saturé';
+
+    // effective per-person speed & real send time
+    var effSpeed = people<=threshold ? PHONE : capacity/people;
+    var realTime = size/effSpeed;
+    $('#b-time').innerHTML='<span>'+fmtTime(realTime)+'</span>';
+
+    // total data of the event
+    var totalMo=people*size;
+    var totalGo=totalMo/1000, totalTo=totalGo/1000;
+    var energy=totalGo*KWH_PER_GO;
+    var homes=energy/HOME_KWH_DAY;
+    $('#b-energy').innerHTML= (energy<1?fr(energy,2):fr(energy, energy<10?1:0))+' <small>kWh</small>';
+
+    // data centers
+    var dc=Math.max(1,Math.ceil(totalTo/DC_PER_TO));
+    $('#b-dc-count').textContent='≈ '+fr(dc);
+    racks.forEach(function(r,idx){
+      var on=idx<Math.min(dc,RACK_MAX);
+      r.classList.toggle('on',on);
+      r.classList.toggle('hot',on && level==='crit');
+    });
+
+    // advisory
+    var adv=$('#b-advice'), advTxt=$('#b-advice-txt');
+    adv.className='advice '+level;
+    if(level==='ok'){
+      advTxt.innerHTML='<b>Tout passe.</b> <span>Le réseau absorbe les '+fr(people)+' envois. Fais monter le nombre de spectateurs pour trouver le point de rupture.</span>';
+    } else if(level==='warn'){
+      advTxt.innerHTML='<b>Ça commence à coincer.</b> <span>Encore un peu plus de spectateurs et le réseau saturera. Deux leviers possibles : investir dans une meilleure infrastructure, ou étaler les envois dans le temps.</span>';
+    } else {
+      var perte=fr(realTime/(size/PHONE),1);
+      advTxt.innerHTML='<b>Réseau saturé.</b> <span>Chaque envoi prend '+perte+'× plus de temps que prévu. Pour résoudre ça : <b style="color:var(--ink)">augmenter la capacité</b> (un choix stratégique et coûteux) ou <b style="color:var(--ink)">étaler les envois</b>. C\'est là que se jouent les investissements de la société.</span>';
+    }
+
+    setFill(bPeople); setFill(bSize);
+  }
+
+  bPeople.addEventListener('input',computeB);
+  bSize.addEventListener('input',computeB);
+  bInfra.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    capacity=+b.dataset.c;
+    [].forEach.call(bInfra.children,function(x){x.setAttribute('aria-pressed', x===b)});
+    computeB();
+  });
+
+  computeA(); computeB();
+})();
+</script>
+</body>
+</html>
